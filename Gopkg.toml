@@ -1,0 +1,9 @@
+# Gopkg.toml for gscat
+
+[[constraint]]
+  name = "github.com/magefile/mage"
+  version = "2.1.0"
+
+[prune]
+  go-tests = true
+  unused-packages = true
