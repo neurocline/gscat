@@ -4,6 +4,11 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+
+	"github.com/neurocline/gscat/pkg/test"
 )
 
 var (
@@ -16,6 +21,14 @@ var (
 )
 
 func main() {
-	fmt.Println("Nothing to see here yet")
 	fmt.Printf("BuildDate=%s CommitHash=%s\n", BuildDate, CommitHash)
+	fmt.Printf("runtime.GOMAXPROCS(0)=%d\n", runtime.GOMAXPROCS(0))
+
+	basepath := "./"
+	if len(os.Args) > 1 {
+		basepath = filepath.Clean(os.Args[1])
+	}
+
+	// test.StatsTest(basepath)
+	test.ReadTest(basepath)
 }

@@ -2,6 +2,24 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/MichaelTJones/walk"
+  packages = ["."]
+  revision = "4748e29d5718c2df4028a6543edf86fd8cc0f881"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/iafan/cwalk"
+  packages = ["."]
+  revision = "4c301c02b9f45b8589be22ceac59cf24eeddad63"
+
+[[projects]]
+  name = "github.com/karrick/godirwalk"
+  packages = ["."]
+  revision = "6755865b2b7331ebc40fa150a71e2a8e05a90333"
+  version = "v1.6.2"
+
+[[projects]]
   name = "github.com/magefile/mage"
   packages = [
     "mg",
@@ -11,9 +29,15 @@
   revision = "771ebed3d686dce3d36cab4fc9ee55c295ed8905"
   version = "2.1"
 
+[[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1fd3dea11bad06b5523995a06f2939f2a8ea24b4ec88f57dfef80d744ec4ebb6"
+  inputs-digest = "b1a6c1dec889ca199836ae7bb180059c58d6a62f255c733dc0605b0900da32dc"
   solver-name = "gps-cdcl"
   solver-version = 1

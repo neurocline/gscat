@@ -3,7 +3,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/magefile/mage/mg"
@@ -17,8 +16,6 @@ import (
 
 // Install gscat binary
 func Install() error {
-	s := flagEnv()
-	fmt.Println(s)
 	return sh.RunWith(flagEnv(), "go", "install", "-ldflags", ldflags, packageName)
 }
 
