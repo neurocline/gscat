@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/karrick/godirwalk"
@@ -84,23 +85,31 @@ func read_filepath(basepath string) {
 func read_tjones_walk(basepath string) {
 	defer print_elapsed(time.Now())
 	fmt.Println("calling MichaelTJones/walk.Walk")
+
+	// These get parallel access, so need a mutex to update them
+	var mu sync.Mutex
 	dot := 0
 	count := 0
 	dircount := 0
 	filecount := 0
 	var filebytes int64 = 0
 	othercount := 0
+
 	fmt.Printf("Searching in %s\n", basepath)
 	cwalk.Walk(basepath, func(root string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
+		mu.Lock()
+		defer mu.Unlock()
 		count++
 		switch mode := info.Mode(); {
 		case mode.IsRegular():
 			filecount++
 			filebytes = filebytes + info.Size()
+			mu.Unlock()
 			read_ignore(root)
+			mu.Lock()
 		case mode.IsDir():
 			dircount++
 		default:
@@ -121,6 +130,9 @@ func read_tjones_walk(basepath string) {
 func read_iafan_cwalk(basepath string) {
 	defer print_elapsed(time.Now())
 	fmt.Println("calling iafan/cwalk.Walk")
+
+	// These get parallel access, so need a mutex to update them
+	var mu sync.Mutex
 	dot := 0
 	count := 0
 	dircount := 0
@@ -132,12 +144,16 @@ func read_iafan_cwalk(basepath string) {
 		if err != nil {
 			return err
 		}
+		mu.Lock()
+		defer mu.Unlock()
 		count++
 		switch mode := info.Mode(); {
 		case mode.IsRegular():
 			filecount++
 			filebytes = filebytes + info.Size()
+			mu.Unlock()
 			read_ignore(root)
+			mu.Lock()
 		case mode.IsDir():
 			dircount++
 		default:
