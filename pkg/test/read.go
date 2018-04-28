@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/neurocline/gscat/pkg/console"
 
 	"github.com/karrick/godirwalk"
 	"github.com/MichaelTJones/walk"
@@ -19,11 +22,11 @@ func ReadTest(basepath string) {
 	fmt.Printf("------------\nReading\n------------\n")
 	read_filepath(basepath)
 	fmt.Println()
-	read_tjones_walk(basepath)
-	fmt.Println()
-	read_iafan_cwalk(basepath)
-	fmt.Println()
-	read_karrick_godirwalk(basepath)
+//	read_tjones_walk(basepath)
+//	fmt.Println()
+//	read_iafan_cwalk(basepath)
+//	fmt.Println()
+//	read_karrick_godirwalk(basepath)
 }
 
 func read_ignore(p string) {
@@ -45,41 +48,78 @@ func read_ignore(p string) {
 	}
 }
 
+type Stats struct {
+	count int64
+	dircount int64
+	filecount int64
+	othercount int64
+	filebytes int64
+
+	init bool
+	dot int
+	cwid int
+	start time.Time
+	lastout time.Time
+	blanks string
+}
+
+func (s *Stats) status(curpath string) {
+
+	// First-time init, set up status bar width
+	if !s.init {
+		s.init = true
+		s.start = time.Now()
+		s.lastout = s.start.Add(time.Duration(1)*time.Second)
+		info, err := console.GetConsoleScreenBufferInfo(0)
+		if err != nil {
+			panic("omg")
+		}
+		s.cwid = int(info.MaximumWindowSize.X)
+		s.blanks = strings.Repeat(" ", s.cwid)
+	}
+
+	now := time.Now()
+	if now.Sub(s.lastout) > 250*time.Millisecond {
+		deltasec := now.Sub(s.start).Seconds()
+		name50 := curpath
+		if len(curpath) > 50 {
+			name50 = curpath[:47] + "..."
+		}
+		obuf := fmt.Sprintf("t+%d n=%d d=%d f=%d %.2fMB %s", int(deltasec), s.count, s.dircount, s.filecount, float64(s.filebytes)/1000000.0, name50)
+		pad := s.cwid - len(obuf) - 1
+		fmt.Fprintf(os.Stderr, "\r%s%s", obuf, s.blanks[0:pad])
+		s.lastout = now;
+	}
+}
+
 func read_filepath(basepath string) {
 	defer print_elapsed(time.Now())
 	fmt.Println("calling path/filepath.Walk")
-	dot := 0
-	count := 0
-	dircount := 0
-	filecount := 0
-	var filebytes int64 = 0
-	othercount := 0
+	var s Stats
 	fmt.Printf("Searching in %s\n", basepath)
 	filepath.Walk(basepath, func(root string, info os.FileInfo, err error) error {
 		if err != nil {
-			return err
+			fmt.Fprintf(os.Stderr, "Err %s\n", err.Error())
+			return nil //err
 		}
-		count++
+		s.count++
 		switch mode := info.Mode(); {
 		case mode.IsRegular():
-			filecount++
-			filebytes = filebytes + info.Size()
+			s.filecount++
+			s.filebytes += info.Size()
 			read_ignore(root)
 		case mode.IsDir():
-			dircount++
+			s.dircount++
 		default:
-			othercount++
+			s.othercount++
 		}
 
-		dot++
-		if dot == 1000 {
-			fmt.Fprintf(os.Stderr, ".")
-			dot = 0
-		}
+		s.dot++
+		s.status(root)
 		return nil
 	})
 	fmt.Fprintf(os.Stderr, "\n")
-	fmt.Printf("total=%d dirs=%d files=%d bytes=%dMB other=%d\n", count, dircount, filecount, filebytes/1000000, othercount)
+	fmt.Printf("total=%d dirs=%d files=%d bytes=%dMB other=%d\n", s.count, s.dircount, s.filecount, s.filebytes/1000000, s.othercount)
 }
 
 func read_tjones_walk(basepath string) {
@@ -88,12 +128,7 @@ func read_tjones_walk(basepath string) {
 
 	// These get parallel access, so need a mutex to update them
 	var mu sync.Mutex
-	dot := 0
-	count := 0
-	dircount := 0
-	filecount := 0
-	var filebytes int64 = 0
-	othercount := 0
+	var s Stats
 
 	fmt.Printf("Searching in %s\n", basepath)
 	cwalk.Walk(basepath, func(root string, info os.FileInfo, err error) error {
@@ -102,29 +137,26 @@ func read_tjones_walk(basepath string) {
 		}
 		mu.Lock()
 		defer mu.Unlock()
-		count++
+		s.count++
 		switch mode := info.Mode(); {
 		case mode.IsRegular():
-			filecount++
-			filebytes = filebytes + info.Size()
+			s.filecount++
+			s.filebytes += info.Size()
 			mu.Unlock()
 			read_ignore(root)
 			mu.Lock()
 		case mode.IsDir():
-			dircount++
+			s.dircount++
 		default:
-			othercount++
+			s.othercount++
 		}
 
-		dot++
-		if dot == 1000 {
-			fmt.Fprintf(os.Stderr, ".")
-			dot = 0
-		}
+		s.dot++
+		s.status(root)
 		return nil
 	})
 	fmt.Fprintf(os.Stderr, "\n")
-	fmt.Printf("total=%d dirs=%d files=%d bytes=%dMB other=%d\n", count, dircount, filecount, filebytes/1000000, othercount)
+	fmt.Printf("total=%d dirs=%d files=%d bytes=%dMB other=%d\n", s.count, s.dircount, s.filecount, s.filebytes/1000000, s.othercount)
 }
 
 func read_iafan_cwalk(basepath string) {

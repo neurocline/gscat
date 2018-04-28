@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/magefile/mage/mg"
@@ -16,6 +17,8 @@ import (
 
 // Install gscat binary
 func Install() error {
+	s := flagEnv()
+	fmt.Println(s)
 	return sh.RunWith(flagEnv(), "go", "install", "-ldflags", ldflags, packageName)
 }
 
@@ -24,9 +27,9 @@ func Install() error {
 // import path to the package
 
 const packageName  = "github.com/neurocline/gscat"
-const noGitLdflags = "-X main.BuildDate=$BUILD_DATE"
+const noGitLdflags = "-X $PACKAGE/pkg/core.BuildDate=$BUILD_DATE"
 
-var ldflags = "-X main.CommitHash=$COMMIT_HASH -X main.BuildDate=$BUILD_DATE"
+var ldflags = "-X $PACKAGE/pkg/core.CommitHash=$COMMIT_HASH -X $PACKAGE/pkg/core.BuildDate=$BUILD_DATE"
 
 func flagEnv() map[string]string {
 	hash, _ := sh.Output("git", "rev-parse", "--short", "HEAD")
