@@ -23,18 +23,35 @@ var (
 )
 
 func Run() {
-	cmd := BuildCommand()
-	cmd.cmd.ExecuteC()
+	root := BuildCommand()
+	root.Execute()
+}
+
+func BuildCommand() *gscatCmd {
+
+	root := buildRootCommand()
+
+	root.cmd.AddCommand(buildInfoCommand(root).cmd)
+	root.cmd.AddCommand(buildReadCommand(root).cmd)
+
+	return root
+}
+
+func (c *gscatCmd) Execute() {
+	c.cmd.ExecuteC()
 }
 
 type gscatCmd struct {
 	cmd *cobra.Command
-
-	stats bool
-	read bool
+	rootFlags
 }
 
-func BuildCommand() *gscatCmd {
+type rootFlags struct {
+	verbose bool
+	debug bool
+}
+
+func buildRootCommand() *gscatCmd {
 	c := &gscatCmd{}
 
 	c.cmd = &cobra.Command{
@@ -44,16 +61,34 @@ func BuildCommand() *gscatCmd {
 
 Scans, analyzes and archives data across multiple systems, including search
 by multiple criteria.`,
-		RunE: c.gscat,
+		RunE: nil,
 	}
 
-	c.cmd.Flags().BoolVarP(&c.stats, "stats", "", false, "scan for stats")
-	c.cmd.Flags().BoolVarP(&c.read, "read", "", false, "read files")
+	c.cmd.PersistentFlags().BoolVarP(&c.rootFlags.verbose, "verbose", "v", false, "verbose output")
+	c.cmd.PersistentFlags().BoolVarP(&c.rootFlags.debug, "debug", "", false, "debug output")
 
 	return c
 }
 
-func (c *gscatCmd) gscat(cmd *cobra.Command, args []string) error {
+type gscatInfoCmd struct {
+	cmd *cobra.Command
+	*rootFlags
+}
+
+func buildInfoCommand(parent *gscatCmd) *gscatInfoCmd {
+	c := &gscatInfoCmd{}
+	c.rootFlags = &parent.rootFlags
+
+	c.cmd = &cobra.Command{
+		Use: "info",
+		Short: "show information about local catalogs",
+		RunE: c.info,
+	}
+
+	return c
+}
+
+func (c *gscatInfoCmd) info(cmd *cobra.Command, args []string) error {
 	fmt.Printf("BuildDate=%s CommitHash=%s\n", BuildDate, CommitHash)
 	fmt.Printf("runtime.GOMAXPROCS(0)=%d\n", runtime.GOMAXPROCS(0))
 	info, err := console.GetConsoleScreenBufferInfo(0)
@@ -62,6 +97,32 @@ func (c *gscatCmd) gscat(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Printf("console info = %s\n", info)
 
+	return nil
+}
+
+type gscatReadCmd struct {
+	cmd *cobra.Command
+	*rootFlags
+
+	stats bool
+}
+
+func buildReadCommand(parent *gscatCmd) *gscatReadCmd {
+	c := &gscatReadCmd{}
+	c.rootFlags = &parent.rootFlags
+
+	c.cmd = &cobra.Command{
+		Use: "read",
+		Short: "scan disk and calculate content-ids",
+		RunE: c.read,
+	}
+
+	c.cmd.Flags().BoolVarP(&c.stats, "stats", "", false, "just get cheap metadata")
+
+	return c
+}
+
+func (c *gscatReadCmd) read(cmd *cobra.Command, args []string) error {
 	basepath := "./"
 	if len(args) > 0 {
 		basepath = filepath.Clean(args[0])
@@ -69,8 +130,7 @@ func (c *gscatCmd) gscat(cmd *cobra.Command, args []string) error {
 
 	if (c.stats) {
 		test.StatsTest(basepath)
-	}
-	if (c.read) {
+	} else {
 		test.ReadTest(basepath)
 	}
 
